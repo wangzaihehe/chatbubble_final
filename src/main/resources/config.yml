@@ -1,0 +1,65 @@
+bubble:
+  # 基础设置
+  enabled: true
+  y-offset: 0.55
+  inner-px: 140         # 可显示区域的目标像素宽（文本估宽 + 内边距）
+  auto-wrap: true
+  max-lines: 4
+  ellipsis: "..."
+  font-px: 6
+  lifetime-ticks: 80
+  fadeout-ticks: 20
+  view-range: 36
+  row-step: 0.00        # 三段式不再需要纵向台阶；保持 0
+  show-shadow: false    # 文字去阴影更锐利
+  mini-message: "<#111111>%message%</#111111>"
+  use-papi-for-text: false
+  
+  # 只影响 tail 两侧的 mid 数量裁剪（每侧）。默认 0
+  tail-trim-per-side: 0
+  max-height: 33        # 允许的最高套件（超出就 clamp 到此高度）
+
+  # 每种高度的视觉行宽（像素），不配则走 inner-px
+  inner-px-per-height:
+    "13": 140
+    "23": 120
+    "33": 110
+
+  # 宽度系数（和 IA 的 scale_ratio 对齐），不配则用 1.0
+  width-mul-per-height:
+    "13": 1.00
+    "23": 0.90
+    "33": 0.85
+
+  # 三段式不同高度的贴图与像素宽
+  sets:
+    13:
+      left: "chatL_13"
+      mid: "chatM_13"
+      right: "chatR_13"
+      tail: "chatT_13"
+      left_px: 3
+      mid_px: 5
+      right_px: 3
+      tail_px: 7
+      padding_px: 12
+    23:
+      left: "chatL_23"
+      mid: "chatM_23"
+      right: "chatR_23"
+      tail: "chatT_23"
+      left_px: 3
+      mid_px: 5
+      right_px: 3
+      tail_px: 7
+      padding_px: 12
+    33:
+      left: "chatL_33"
+      mid: "chatM_33"
+      right: "chatR_33"
+      tail: "chatT_33"
+      left_px: 3
+      mid_px: 5
+      right_px: 3
+      tail_px: 7
+      padding_px: 12

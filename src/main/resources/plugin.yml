@@ -1,0 +1,22 @@
+name: ChatBubble
+version: 2.0.8
+main: com.sagecraft.Main
+api-version: 1.20
+authors: [SageCraft]
+description: 一个高性能的聊天气泡插件，使用自建反射系统，无需ProtocolLib依赖
+
+depend: [PlaceholderAPI]
+
+commands:
+  chatbubble:
+    description: ChatBubble插件命令
+    usage: /<command> [reload]
+    aliases: [cb]
+  testia:
+    description: 测试命令
+    usage: /<command>
+
+permissions:
+  chatbubble.reload:
+    description: 允许重新加载ChatBubble配置
+    default: op
