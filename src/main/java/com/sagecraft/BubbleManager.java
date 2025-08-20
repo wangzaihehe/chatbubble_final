@@ -133,9 +133,9 @@ public final class BubbleManager {
                 d.setInterpolationDelay(0);
                 d.setInterpolationDuration(2); // 轻插值丝滑
             }
-            var tb = _bg.getTransformation();   tb.getTranslation().set(0f, 0f, -0.010f); _bg.setTransformation(tb);
-            var tt = _tail.getTransformation(); tt.getTranslation().set(0f, 0f,  0.000f); _tail.setTransformation(tt);
-            var txf = _tx.getTransformation();  txf.getTranslation().set(0f, 0f,  0.010f); _tx.setTransformation(txf);
+            var tb = _bg.getTransformation();   tb.getTranslation().set(0f, 0.5f, -0.010f); _bg.setTransformation(tb);
+            var tt = _tail.getTransformation(); tt.getTranslation().set(0f, 0.5f,  0.000f); _tail.setTransformation(tt);
+            var txf = _tx.getTransformation();  txf.getTranslation().set(0f, 0.5f,  0.010f); _tx.setTransformation(txf);
 
             _tx.setShadowed(c.getBoolean("bubble.show-shadow", false));
             displays.put(p.getUniqueId(), new TextDisplay[]{_bg, _tx, _tail});
@@ -152,10 +152,16 @@ public final class BubbleManager {
         bg.setDefaultBackground(false); tail.setDefaultBackground(false); tx.setDefaultBackground(false);
         try { bg.setBackgroundColor(CLEAR); tail.setBackgroundColor(CLEAR); tx.setBackgroundColor(CLEAR); } catch (Throwable ignored) {}
 
-        // 7) 放到头顶
+        // 7) 设置为玩家的passenger，自动跟随移动
+        // 硬编码Y偏移量，让气泡更明显        
         final double oy = c.getDouble("bubble.y-offset", 0.55);
         var head = p.getLocation().add(0, p.isSneaking() ? 1.6 : 1.9, 0).add(0, oy, 0);
         bg.teleport(head); tail.teleport(head); tx.teleport(head);
+        
+        // 将TextDisplay设置为玩家的passenger，实现自动跟随
+        p.addPassenger(bg);
+        p.addPassenger(tail);
+        p.addPassenger(tx);
 
         // —— 取消旧动画任务，避免叠加 ——
         cancelRunningTasks(p.getUniqueId());
@@ -196,14 +202,20 @@ public final class BubbleManager {
         pushTask(p.getUniqueId(), enterTask);
     }
 
-    /** 每 tick 跟随玩家头部（建议每 5~10 tick 调用以省性能） */
+    /** 每 tick 跟随玩家头部（使用passenger系统，无需手动更新位置） */
     public void tickFollowAll() {
-        final double oy = P.getConfig().getDouble("bubble.y-offset", 0.55);
+        // 使用passenger系统后，TextDisplay会自动跟随玩家移动
+        // 这里可以保留用于其他可能的处理，但不再需要手动teleport
         for (Player p : Bukkit.getOnlinePlayers()) {
             TextDisplay[] a = displays.get(p.getUniqueId());
             if (a == null) continue;
-            var head = p.getLocation().add(0, p.isSneaking() ? 1.6 : 1.9, 0).add(0, oy, 0);
-            for (TextDisplay d : a) if (d != null && d.isValid()) d.teleport(head);
+            // 检查实体是否仍然有效，如果无效则清理
+            for (TextDisplay d : a) {
+                if (d != null && !d.isValid()) {
+                    cleanupPlayer(p.getUniqueId());
+                    break;
+                }
+            }
         }
     }
 
@@ -217,6 +229,10 @@ public final class BubbleManager {
         if (arr != null) {
             for (TextDisplay display : arr) {
                 if (display != null && display.isValid()) {
+                    // 先移除passenger关系，再删除实体
+                    if (display.getVehicle() != null) {
+                        display.leaveVehicle();
+                    }
                     display.remove();
                 }
             }
@@ -236,9 +252,18 @@ public final class BubbleManager {
                 setScaleAll(s, bg, tail, tx);
                 if (FADE_WITH_SCALE) setOpacityAll((int)(255 * (1f - progress)), bg, tail, tx);
                 if (++t > exitTicks) {
-                    if (bg.isValid()) bg.remove();
-                    if (tail.isValid()) tail.remove();
-                    if (tx.isValid()) tx.remove();
+                    if (bg.isValid()) {
+                        if (bg.getVehicle() != null) bg.leaveVehicle();
+                        bg.remove();
+                    }
+                    if (tail.isValid()) {
+                        if (tail.getVehicle() != null) tail.leaveVehicle();
+                        tail.remove();
+                    }
+                    if (tx.isValid()) {
+                        if (tx.getVehicle() != null) tx.leaveVehicle();
+                        tx.remove();
+                    }
                     displays.remove(uid);
                     cancel();
                 }
