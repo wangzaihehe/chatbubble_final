@@ -14,7 +14,7 @@ commands:
     aliases: [cb]
   testia:
     description: 测试命令
-    usage: /<command>
+    usage: /<command> [packet|broadcast|chat]
 
 permissions:
   chatbubble.reload:

@@ -11,22 +11,28 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+
 
 public final class Main extends JavaPlugin implements Listener {
 
-    private BubbleManager bubbles;
+    private PacketEventsBubbleManager packetBubbles; // PacketEvents气泡管理器
 
     @Override
     public void onEnable() {
+        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+        //On Bukkit, calling this here is essential, hence the name "load"
+        PacketEvents.getAPI().load();
+        PacketEvents.getAPI().init();
         // Plugin startup logic
         saveDefaultConfig();
-        bubbles = new BubbleManager(this);
+        packetBubbles = new PacketEventsBubbleManager(this);
         getServer().getPluginManager().registerEvents(this, this);
         
-        // 启动定时任务，每tick更新气泡位置
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            bubbles.tickFollowAll();
-        }, 1L, 1L);
+        // 注册PacketEvents监听器
+        PacketEvents.getAPI().getEventManager().registerListener(packetBubbles, PacketListenerPriority.NORMAL);
         
         getLogger().info("ChatBubble 插件已启用！");
     }
@@ -36,9 +42,10 @@ public final class Main extends JavaPlugin implements Listener {
         // Plugin shutdown logic
         // 清理所有玩家的气泡数据
         for (Player player : Bukkit.getOnlinePlayers()) {
-            bubbles.cleanupPlayer(player.getUniqueId());
+            packetBubbles.cleanupPlayer(player.getUniqueId());
         }
         getLogger().info("ChatBubble 插件已禁用！");
+        PacketEvents.getAPI().terminate();
     }
 
     @Override
@@ -52,8 +59,8 @@ public final class Main extends JavaPlugin implements Listener {
                 
                 // 重新加载配置
                 reloadConfig();
-                // 重新初始化BubbleManager
-                bubbles = new BubbleManager(this);
+                // 重新初始化PacketEventsBubbleManager
+                packetBubbles = new PacketEventsBubbleManager(this);
                 sender.sendMessage("§aChatBubble 配置已重新加载！");
                 return true;
             }
@@ -70,7 +77,40 @@ public final class Main extends JavaPlugin implements Listener {
             }
             
             Player p = (Player) sender;
-            p.sendMessage("§a测试命令执行成功！");
+            
+            if (args.length > 0) {
+                String testType = args[0].toLowerCase();
+                switch (testType) {
+                    case "packet":
+                        // 测试PacketEvents气泡
+                        packetBubbles.onChat(p, "这是PacketEvents测试文本！");
+                        p.sendMessage("§a已创建PacketEvents气泡！");
+                        break;
+                    case "broadcast":
+                        // 测试广播
+                        packetBubbles.onChat(p, "服务器广播测试消息！");
+                        p.sendMessage("§a已向所有玩家广播气泡！");
+                        break;
+                    case "chat":
+                        // 测试聊天事件
+                        packetBubbles.onChat(p, "测试聊天消息");
+                        p.sendMessage("§a已触发聊天事件测试！");
+                        break;
+                    default:
+                        p.sendMessage("§e可用的测试类型：");
+                        p.sendMessage("§7/testia bubble §8- 测试传统气泡");
+                        p.sendMessage("§7/testia packet §8- 测试PacketEvents文本显示");
+                        p.sendMessage("§7/testia broadcast §8- 测试广播文本显示");
+                        p.sendMessage("§7/testia chat §8- 测试聊天事件");
+                        break;
+                }
+            } else {
+                p.sendMessage("§e测试命令使用说明：");
+                p.sendMessage("§7/testia bubble §8- 测试传统气泡");
+                p.sendMessage("§7/testia packet §8- 测试PacketEvents文本显示");
+                p.sendMessage("§7/testia broadcast §8- 测试广播文本显示");
+                p.sendMessage("§7/testia chat §8- 测试聊天事件");
+            }
             return true;
         }
         
@@ -85,7 +125,8 @@ public final class Main extends JavaPlugin implements Listener {
         
         // 在主线程中执行气泡创建
         Bukkit.getScheduler().runTask(this, () -> {
-            bubbles.onChat(player, message);
+            // 使用PacketEvents气泡管理器
+            packetBubbles.onChat(player, message);
         });
     }
 
@@ -98,6 +139,6 @@ public final class Main extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
         // 玩家退出时清理气泡数据
-        bubbles.cleanupPlayer(e.getPlayer().getUniqueId());
+        packetBubbles.cleanupPlayer(e.getPlayer().getUniqueId());
     }
 }

@@ -1,18 +1,22 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.sagecraft</groupId>
   <artifactId>chatbubble</artifactId>
-      <version>2.0.9</version>
+  <version>2.0.9</version>
   <packaging>jar</packaging>
 
   <name>ChatBubble</name>
-  <description>高性能聊天气泡插件，使用自建反射系统，无需ProtocolLib依赖</description>
+  <description>高性能聊天气泡插件（支持 PacketEvents 发包渲染；无 ProtocolLib 依赖）</description>
 
   <properties>
     <java.version>21</java.version>
     <paper.version>1.21.8-R0.1-SNAPSHOT</paper.version>
+    <placeholderapi.version>2.11.6</placeholderapi.version>
+    <packetevents.version>2.9.4</packetevents.version>
+    <itemsadder.version>4.0.12</itemsadder.version>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,19 +29,29 @@
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
 
-    <!-- PlaceholderAPI 官方仓库 -->
+    <!-- PlaceholderAPI -->
     <repository>
       <id>placeholderapi</id>
       <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
     </repository>
 
-    <!-- 备选：helpch 镜像 -->
+    <!-- helpch 镜像（PAPI 备选） -->
     <repository>
       <id>helpch-releases</id>
       <url>https://repo.helpch.at/releases/</url>
     </repository>
 
-    <!-- ItemsAdder API 仓库 -->
+    <!-- PacketEvents（CodeMC） -->
+    <repository>
+      <id>codemc-releases</id>
+      <url>https://repo.codemc.io/repository/maven-releases/</url>
+    </repository>
+    <repository>
+      <id>codemc-snapshots</id>
+      <url>https://repo.codemc.io/repository/maven-snapshots/</url>
+    </repository>
+
+    <!-- ItemsAdder API（如果你想从仓库拉取，而不是本地 jar） -->
     <repository>
       <id>matteodev</id>
       <url>https://maven.devs.beer/</url>
@@ -57,47 +71,56 @@
     <dependency>
       <groupId>me.clip</groupId>
       <artifactId>placeholderapi</artifactId>
-      <version>2.11.6</version>
+      <version>${placeholderapi.version}</version>
       <scope>provided</scope>
     </dependency>
 
-    <!-- ItemsAdder API (可选依赖) -->
+    <!-- PacketEvents（只在运行环境提供，不打进 jar） -->
     <dependency>
-        <groupId>dev.lone</groupId>
-        <artifactId>api-itemsadder</artifactId>
-        <version>4.0.12</version>
-        <scope>system</scope>
-        <systemPath>${project.basedir}/libs/ItemsAdder_4.0.12.jar</systemPath>
-        <optional>true</optional>
+      <groupId>com.github.retrooper</groupId>
+      <artifactId>packetevents-spigot</artifactId>
+      <version>2.9.4</version>
+      <scope>provided</scope>
     </dependency>
 
-    <!-- 移除 ProtocolLib 依赖 - 现在使用自建反射系统 -->
-    <!-- 
+    <!-- ItemsAdder API（两选一：其一为本地 jar，其二为仓库坐标） -->
+    <!-- A) 本地 jar（保持你现状） -->
     <dependency>
-        <groupId>com.comphenix.protocol</groupId>
-        <artifactId>ProtocolLib</artifactId>
-        <version>5.0.0</version>
-        <scope>system</scope>
-        <systemPath>${project.basedir}/libs/ProtocolLib.jar</systemPath>
+      <groupId>dev.lone</groupId>
+      <artifactId>api-itemsadder</artifactId>
+      <version>${itemsadder.version}</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/ItemsAdder_${itemsadder.version}.jar</systemPath>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- B) 仓库坐标（若你确认仓库里有该坐标可用，去掉 A，启用 B）
+    <dependency>
+      <groupId>dev.lone</groupId>
+      <artifactId>api-itemsadder</artifactId>
+      <version>${itemsadder.version}</version>
+      <scope>provided</scope>
+      <optional>true</optional>
     </dependency>
     -->
   </dependencies>
 
   <build>
     <plugins>
-      <!-- Maven Compiler Plugin -->
+      <!-- 编译器 -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.11.0</version>
         <configuration>
-          <source>21</source>
-          <target>21</target>
-          <encoding>UTF-8</encoding>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+          <release>${java.version}</release>
+          <encoding>${project.build.sourceEncoding}</encoding>
         </configuration>
       </plugin>
 
-      <!-- Maven Shade Plugin - 打包依赖 -->
+      <!-- Shade（不包含 provided 依赖） -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -110,26 +133,27 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
+              <!-- 不最小化，避免误裁 Paper/Adventure 提示 -->
+              <minimizeJar>false</minimizeJar>
               <relocations>
-                <!-- 重定位内部依赖以避免冲突 -->
+                <!-- 如需 relocation 自带工具库可在此配置 -->
               </relocations>
             </configuration>
           </execution>
         </executions>
       </plugin>
 
-      <!-- Maven Resources Plugin -->
+      <!-- 资源 -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
         <version>3.3.1</version>
         <configuration>
-          <encoding>UTF-8</encoding>
+          <encoding>${project.build.sourceEncoding}</encoding>
         </configuration>
       </plugin>
     </plugins>
 
-    <!-- 资源文件配置 -->
     <resources>
       <resource>
         <directory>src/main/resources</directory>
